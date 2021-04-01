@@ -3,6 +3,7 @@ pub struct Instr {
     pub input: Vec<i64>,
     pub output: Vec<i64>,
     pub relative_base: i64,
+    pub instr_ptr: usize,
 }
 
 #[derive(Debug)]
@@ -29,10 +30,9 @@ pub enum Opcode {
 pub type ModeSet = (Mode, Mode, Mode);
 
 impl Instr {
-    pub fn iterate(&mut self) {
-        let mut i: usize = 0;
-        while i < self.instr.len() {
-            let opcode = match self.instr[i] % 100 {
+    pub fn iterate(&mut self, amplifier_mode: bool) {
+        while self.instr_ptr < self.instr.len() {
+            let opcode = match self.instr[self.instr_ptr] % 100 {
                 1 => Opcode::Add,
                 2 => Opcode::Mul,
                 3 => Opcode::Inp,
@@ -45,7 +45,7 @@ impl Instr {
                 99 => Opcode::Halt,
                 _ => panic!("opcode out of range"),
             };
-            let param_mode: ModeSet = match self.instr[i] / 100 {
+            let param_mode: ModeSet = match self.instr[self.instr_ptr] / 100 {
                 0 => (Mode::Position, Mode::Position, Mode::Position),
                 1 => (Mode::Immediate, Mode::Position, Mode::Position),
                 10 => (Mode::Position, Mode::Immediate, Mode::Position),
@@ -72,78 +72,92 @@ impl Instr {
             match opcode {
                 Opcode::Add => {
                     self.add(
-                        self.instr[i + 1],
-                        self.instr[i + 2],
-                        self.instr[i + 3],
+                        self.instr[self.instr_ptr + 1],
+                        self.instr[self.instr_ptr + 2],
+                        self.instr[self.instr_ptr + 3],
                         &param_mode,
                     );
-                    i += 4
+                    self.instr_ptr += 4
                 }
                 Opcode::Mul => {
                     self.multiply(
-                        self.instr[i + 1],
-                        self.instr[i + 2],
-                        self.instr[i + 3],
+                        self.instr[self.instr_ptr + 1],
+                        self.instr[self.instr_ptr + 2],
+                        self.instr[self.instr_ptr + 3],
                         &param_mode,
                     );
-                    i += 4;
+                    self.instr_ptr += 4;
                 }
                 Opcode::Inp => {
-                    self.get_input(self.instr[(i + 1) as usize] as usize, &param_mode);
-                    i += 2;
+                    self.get_input(
+                        self.instr[(self.instr_ptr + 1) as usize] as usize,
+                        &param_mode,
+                    );
+                    self.instr_ptr += 2;
                 }
                 Opcode::Outp => {
-                    let out = self.store_output(self.instr[i + 1] as usize, &param_mode);
+                    let out =
+                        self.store_output(self.instr[self.instr_ptr + 1] as usize, &param_mode);
                     self.output.push(out);
-                    i += 2;
+                    self.instr_ptr += 2;
+                    if amplifier_mode {
+                        break;
+                    }
                 }
                 Opcode::JmpIfTrue => {
-                    let (op1, op2) =
-                        self.get_args(self.instr[i + 1], self.instr[i + 2], &param_mode);
+                    let (op1, op2) = self.get_args(
+                        self.instr[self.instr_ptr + 1],
+                        self.instr[self.instr_ptr + 2],
+                        &param_mode,
+                    );
                     match op1 == 0 {
-                        false => i = op2 as usize,
-                        true => i += 3,
+                        false => self.instr_ptr = op2 as usize,
+                        true => self.instr_ptr += 3,
                     };
                 }
                 Opcode::JmpIfFalse => {
-                    let (op1, op2) =
-                        self.get_args(self.instr[i + 1], self.instr[i + 2], &param_mode);
+                    let (op1, op2) = self.get_args(
+                        self.instr[self.instr_ptr + 1],
+                        self.instr[self.instr_ptr + 2],
+                        &param_mode,
+                    );
                     match op1 != 0 {
-                        false => i = op2 as usize,
-                        true => i += 3,
+                        false => self.instr_ptr = op2 as usize,
+                        true => self.instr_ptr += 3,
                     };
                 }
                 Opcode::LessThan => {
                     self.less_than(
-                        self.instr[i + 1],
-                        self.instr[i + 2],
-                        self.instr[i + 3],
+                        self.instr[self.instr_ptr + 1],
+                        self.instr[self.instr_ptr + 2],
+                        self.instr[self.instr_ptr + 3],
                         &param_mode,
                     );
-                    i += 4;
+                    self.instr_ptr += 4;
                 }
                 Opcode::Equals => {
                     self.equals(
-                        self.instr[i + 1],
-                        self.instr[i + 2],
-                        self.instr[i + 3],
+                        self.instr[self.instr_ptr + 1],
+                        self.instr[self.instr_ptr + 2],
+                        self.instr[self.instr_ptr + 3],
                         &param_mode,
                     );
-                    i += 4;
+                    self.instr_ptr += 4;
                 }
                 Opcode::ChBase => {
                     match param_mode.0 {
                         Mode::Position => {
-                            self.relative_base += self.instr[self.instr[i + 1] as usize]
-                        }
-                        Mode::Immediate => self.relative_base += self.instr[i + 1],
-                        Mode::Relative => {
                             self.relative_base +=
-                                self.instr[(self.relative_base + self.instr[i + 1]) as usize]
+                                self.instr[self.instr[self.instr_ptr + 1] as usize]
+                        }
+                        Mode::Immediate => self.relative_base += self.instr[self.instr_ptr + 1],
+                        Mode::Relative => {
+                            self.relative_base += self.instr
+                                [(self.relative_base + self.instr[self.instr_ptr + 1]) as usize]
                         }
                     };
                     //self.relative_base += self.instr[i+1];
-                    i += 2;
+                    self.instr_ptr += 2;
                 }
                 Opcode::Halt => break,
             };
