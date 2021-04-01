@@ -1,7 +1,6 @@
-use std::io::stdin;
-
 pub struct Instr {
     pub instr: Vec<i64>,
+    pub input: Vec<i64>,
     pub output: Vec<i64>,
     pub relative_base: i64,
 }
@@ -149,7 +148,6 @@ impl Instr {
                 Opcode::Halt => break,
             };
         }
-        //println!("{:?}", self.output);
     }
 
     fn get_args(&self, inp1: i64, inp2: i64, modes: &ModeSet) -> (i64, i64) {
@@ -178,11 +176,6 @@ impl Instr {
             self.instr.resize(out_index * 2, 0);
         };
         self.instr[out_index] = val;
-        //match modes.2 {
-        //    Mode::Position => self.instr[out as usize] = val,
-        //    Mode::Relative => self.instr[(out + self.relative_base) as usize] = val,
-        //    Mode::Immediate => panic!("Cannot output in immediate mode"),
-        //};
     }
 
     fn less_than(&mut self, inp1: i64, inp2: i64, out: i64, modes: &ModeSet) {
@@ -212,15 +205,7 @@ impl Instr {
     }
 
     fn get_input(&mut self, pos: usize, modes: &ModeSet) {
-        let mut input_text = String::new();
-        stdin()
-            .read_line(&mut input_text)
-            .expect("failed to read from stdin");
-        let trimmed = input_text.trim();
-        let inp_int = match trimmed.parse::<i64>() {
-            Ok(x) => x,
-            Err(..) => panic!("Not an integer"),
-        };
+        let inp_int = self.input.pop().expect("Expected input");
 
         match modes.0 {
             Mode::Position => {
