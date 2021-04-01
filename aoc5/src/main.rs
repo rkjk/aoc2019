@@ -30,13 +30,15 @@ fn main() {
         input: vec![1],
         output: vec![],
         relative_base: 0,
+        instr_ptr: 0,
     };
-    input.iterate();
+    input.iterate(false);
     let out1 = input.output.pop().expect("Error: No output");
     println!("Part 1: {}", out1);
     input.instr = instructions.clone();
     input.input = vec![5];
-    input.iterate();
+    input.instr_ptr = 0;
+    input.iterate(false);
     let out2 = input.output.pop().expect("Error Part 2: No Output");
     println!("Part 2: {}", out2);
 }

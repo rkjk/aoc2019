@@ -35,8 +35,9 @@ fn main() {
         input: vec![],
         output: vec![],
         relative_base: 0,
+        instr_ptr: 0,
     };
-    input.iterate();
+    input.iterate(false);
     println!("Part 1: {}", input.instr[0]);
 
     // Part 2: Find noun and verb that produces 19690720 as output
@@ -46,7 +47,8 @@ fn main() {
             input.instr = instructions.clone();
             input.instr[1] = i;
             input.instr[2] = j;
-            input.iterate();
+            input.instr_ptr = 0;
+            input.iterate(false);
             match input.instr[0] == 19690720 {
                 true => {
                     println!("Part 2: {}", 100 * i + j);
