@@ -32,6 +32,7 @@ fn main() {
     let start = Instant::now();
     let mut input = Instr {
         instr: instructions.clone(),
+        input: vec![],
         output: vec![],
         relative_base: 0,
     };
